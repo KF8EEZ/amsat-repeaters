@@ -12,4 +12,3 @@
 - Optional: ICS calendar export of passes; pass filter by horizon mask (needs the sstv-iss
   empirical mask); LilacSat-2 window marker on the pass list (see `lilacsat_scheduled` in
   sstv-iss `sdr_report.py`).
-- No git remote yet; ask before creating one or pushing.

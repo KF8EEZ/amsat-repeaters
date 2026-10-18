@@ -19,7 +19,7 @@ frequencies, azimuth/elevation, radio settings), and lists upcoming passes.
 - Commit `_output/` after rendering (rendered reports and cue-sheet PDF copies are browsable
   from GitHub). Raw/generated files in `data/cue_sheets/` and `data/tle/` stay out of git.
 - Render needs `QUARTO_PYTHON=$PWD/.venv/bin/python`; the Jupyter kernel is `amsat-repeaters`.
-- Push only when asked. (No remote was configured when the repo was created.)
+- Remote: `origin` = git@github.com:KF8EEZ/amsat-repeaters.git. Push only when asked.
 - Cue sheets must stay one page each. Menu items on the sheets are listed in numerical
   order so the operator can step through them.
 
