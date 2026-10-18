@@ -1,0 +1,7 @@
+/* Keep embedded matplotlib figures (rendered at fixed pixel size) from
+   overflowing the content column and forcing a horizontal scrollbar. */
+.cell-output img,
+.quarto-figure img {
+  max-width: 100%;
+  height: auto;
+}

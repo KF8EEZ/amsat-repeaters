@@ -1,0 +1,88 @@
+---
+title: "Amateur satellite repeater contacts"
+subtitle: "KF8EEZ, Dayton OH (39.76, -84.19, 225 m): pass plans for two-way FM satellites"
+---
+
+Pass planning for making contacts through FM satellite repeaters: SO-50,
+LilacSat-2 and the ISS repeater. Uplink is on VHF (Yaesu VX-6R with a speaker
+mic into a hand-aimed log-periodic antenna); downlink is monitored on 70 cm
+with an Alinco DJ-VX50. Each pass plan is a one-page printable PDF with a
+Doppler-corrected TX/RX ladder, an azimuth/elevation sky plot and the settings
+for both radios. Frequencies come from the
+[AMSAT FM satellite table](https://www.amsat.org/live-fm-satellites);
+availability is not guaranteed.
+
+```{python}
+#| label: setup
+import sys
+from datetime import datetime, timedelta, timezone
+from pathlib import Path
+from zoneinfo import ZoneInfo
+
+import pandas as pd
+from IPython.display import HTML, Markdown, display
+
+ROOT = Path("..").resolve()
+sys.path.insert(0, str(ROOT))
+import upcoming
+
+TZ = ZoneInfo("America/New_York")
+```
+
+## Upcoming passes
+
+Next 48 hours, 10° and up, computed from fresh TLEs at render time (re-render to
+refresh). Rows with a plan link have a printable PDF; make more with
+`uv run sat_cue_sheets.py --start <ISO local time> --days <n> --min-el 10`.
+Listen-only satellites (no uplink to use) have no plan.
+
+```{python}
+#| label: upcoming
+import re
+
+plans = {}
+for f in (ROOT / "data" / "cue_sheets").glob("sat_*.pdf"):
+    m = re.match(r"sat_(.+)_(\d{8})_(\d{4})\.pdf$", f.name)
+    if m:
+        plans[(m.group(1), m.group(2) + m.group(3))] = f.name
+
+try:
+    now = datetime.now(timezone.utc)
+    rows = []
+    for r, p, s, el, az_r, az_s, name, info in upcoming.upcoming(now, now + timedelta(hours=48)):
+        rl = r.astimezone(TZ)
+        link = plans.get((name, f"{rl:%Y%m%d%H%M}"))
+        rows.append({
+            "rise (EDT)": rl.strftime("%a %m/%d %H:%M:%S"), "sat": name,
+            "TX MHz": f"{info['up']:.3f}" if info["two_way"] else "",
+            "RX MHz": f"{info['down']:.3f}", "max el": round(el),
+            "az rise>set": f"{az_r:.0f}>{az_s:.0f}",
+            "min": round((s - r).total_seconds() / 60, 1),
+            "plan": f'<a href="../data/cue_sheets/{link}">PDF</a>' if link else "",
+        })
+    display(HTML(pd.DataFrame(rows).to_html(index=False, escape=False, classes="table table-sm", border=0)))
+except Exception as exc:
+    display(Markdown(f"*Could not compute upcoming passes: {exc}*"))
+```
+
+## All pass plans
+
+```{python}
+#| label: plans
+items = []
+for (name, stamp), fn in plans.items():
+    when = datetime.strptime(stamp, "%Y%m%d%H%M")
+    items.append((when, name, fn))
+if not items:
+    display(Markdown("*No plans generated yet.*"))
+for when, name, fn in sorted(items):
+    display(Markdown(f"- [{when:%a %m/%d %H:%M} {name}](../data/cue_sheets/{fn})"))
+```
+
+## References
+
+- [AMSAT live FM satellites](https://www.amsat.org/live-fm-satellites):
+  frequencies, tones and status.
+- [AMSAT: LilacSat-2 / CAS-3H](https://www.amsat.org/two-way-satellites/lilacsat-2-cas-3h/):
+  FM transponder planned for 24 h from about 22:00 UTC on Mondays, Wednesdays
+  and Fridays (flexible, subject to change).

@@ -1,0 +1,216 @@
+---
+format:
+  typst:
+    papersize: "us-letter"
+    margin:
+      x: 1.5cm
+      y: 1.5cm
+execute:
+  echo: false
+jupyter: amsat-repeaters
+params:
+  sat_name: "SO-50"
+  rise_iso: "2026-10-17T13:00:00+00:00"
+  peak_iso: "2026-10-17T13:04:00+00:00"
+  set_iso: "2026-10-17T13:09:00+00:00"
+  max_el: 60.0
+  az_r: 220.0
+  az_s: 26.0
+  lat: 39.76
+  lon: -84.19
+  elev: 225.0
+  tz_name: "America/New_York"
+  beamwidth_deg: 74.0
+---
+
+```{python}
+#| tags: [parameters]
+sat_name = "SO-50"
+rise_iso = "2026-10-17T13:00:00+00:00"
+peak_iso = "2026-10-17T13:04:00+00:00"
+set_iso = "2026-10-17T13:09:00+00:00"
+max_el = 60.0
+az_r = 220.0
+az_s = 26.0
+lat = 39.76
+lon = -84.19
+elev = 225.0
+tz_name = "America/New_York"
+beamwidth_deg = 74.0  # Elk 2M/440L5: 8.7 dBi at 2 m -> sqrt(41253/7.4) ~ 74 deg (estimate)
+```
+
+```{python}
+#| label: compute
+import sys
+from datetime import datetime
+from pathlib import Path
+from zoneinfo import ZoneInfo
+
+ROOT = Path.cwd().parent
+sys.path.insert(0, str(ROOT))
+from skyfield.api import load, wgs84
+import sat_cue_sheets as scs
+
+tz = ZoneInfo(tz_name)
+rise = datetime.fromisoformat(rise_iso)
+peak = datetime.fromisoformat(peak_iso)
+setting = datetime.fromisoformat(set_iso)
+info = scs.SATS[sat_name]
+
+ts = load.timescale()
+sat = scs.load_sat(info["norad"], ts)
+site = wgs84.latlon(lat, lon, elev)
+rows = scs.sat_ladder(sat, site, ts, ts.from_datetime(rise), ts.from_datetime(setting),
+                      info["up"], info["down"])
+STEP_S = scs.STEP_S
+```
+
+```{=typst}
+#set page(numbering: none)
+#set text(font: "Liberation Sans")
+```
+
+## `{python} sat_name` Pass Plan {.unnumbered}
+
+**`{python} f"{rise.astimezone(tz):%A %m/%d/%Y}"`**
+\ \ \ \ Rise `{python} f"{rise.astimezone(tz):%H:%M:%S}"`
+\ \ Max `{python} f"{peak.astimezone(tz):%H:%M:%S}"`
+\ \ Set `{python} f"{setting.astimezone(tz):%H:%M:%S}"`
+\ \ \ \ Max El `{python} f"{max_el:.0f}"`°
+\ \ \ \ Az `{python} f"{az_r:.0f}"`°→`{python} f"{az_s:.0f}"`°
+
+**TX (uplink) `{python} f"{info['up']:.3f}"` MHz FM, `{python} info["tone"]`**
+\ \ \ \ **RX (downlink) `{python} f"{info['down']:.3f}"` MHz FM** — Doppler-corrected, rounded to 5 kHz (error up to 2.5 kHz)
+
+```{python}
+#| label: skyplot
+import numpy as np
+import matplotlib
+matplotlib.use("Agg")
+import matplotlib.pyplot as plt
+from datetime import timedelta
+
+# Dense track for the line, ladder rows for the labelled time ticks.
+secs = np.arange(0, (setting - rise).total_seconds() + 1, 5)
+track = []
+for sdt in secs:
+    t = ts.from_datetime(rise + timedelta(seconds=float(sdt)))
+    alt, az, _ = (sat - site).at(t).altaz()
+    if alt.degrees >= 0:
+        track.append((az.degrees, alt.degrees))
+track = np.array(track)
+
+fig = plt.figure(figsize=(4.4, 4.4))
+ax = fig.add_subplot(projection="polar")
+ax.set_theta_zero_location("N")
+ax.set_theta_direction(-1)
+ax.set_rlim(90, 0)
+ax.set_rticks([0, 30, 60])
+ax.set_yticklabels(["", "60°", "30°"], fontsize=7, color="gray")
+ax.set_rlabel_position(135)
+ax.set_xticks(np.radians(np.arange(0, 360, 45)))
+ax.set_xticklabels(["N", "NE", "E", "SE", "S", "SW", "W", "NW"], fontsize=9, fontweight="bold")
+ax.grid(color="lightgray", linewidth=0.6)
+if beamwidth_deg > 0:
+    # Light zone: every sky direction within half the beamwidth (great-circle
+    # angle) of the satellite at some point in the pass, i.e. anywhere the
+    # antenna can point and still hold the satellite inside its -3 dB beam.
+    g_az, g_el = np.meshgrid(np.radians(np.linspace(0, 360, 361)), np.linspace(0, 90, 91))
+    a1, z1 = np.radians(g_el)[..., None], g_az[..., None]
+    a2, z2 = np.radians(track[:, 1]), np.radians(track[:, 0])
+    cos_d = np.sin(a1) * np.sin(a2) + np.cos(a1) * np.cos(a2) * np.cos(z1 - z2)
+    inside = (np.arccos(np.clip(cos_d, -1, 1)) <= np.radians(beamwidth_deg / 2)).any(axis=-1)
+    ax.contourf(g_az, g_el, inside.astype(float), levels=[0.5, 1.5], colors=["#e4e4e4"], zorder=0)
+ax.plot(np.radians(track[:, 0]), track[:, 1], color="#c0392b", linewidth=2)
+fig.subplots_adjust(left=0.1, right=0.9, bottom=0.1, top=0.9)
+fig.canvas.draw()
+# Track in display pixels, so labels can be set perpendicular to the path
+# (text running along the normal never collides with its neighbours).
+disp = ax.transData.transform(np.column_stack([np.radians(track[:, 0]), track[:, 1]]))
+center = ax.transData.transform((0, 90))
+step = int(round(STEP_S / 5))
+# One side of the track for every label: the side facing the zenith overall,
+# so labels stay inside the circle, clear of the compass letters.
+tg = np.gradient(disp, axis=0)
+nn = np.column_stack([-tg[:, 1], tg[:, 0]]) / np.hypot(tg[:, 0], tg[:, 1])[:, None]
+side = 1.0 if np.sum(np.einsum("ij,ij->i", nn, center - disp)) >= 0 else -1.0
+for i, (t_row, el, az, _tx, _rx) in enumerate(rows):
+    ax.plot(np.radians(az), el, "o", color="black", markersize=3)
+    if i % 2:
+        continue
+    k = min(i * step, len(disp) - 1)
+    tang = disp[min(k + 1, len(disp) - 1)] - disp[max(k - 1, 0)]
+    nrm = side * np.array([-tang[1], tang[0]]) / np.hypot(*tang)
+    ang = np.degrees(np.arctan2(nrm[1], nrm[0]))
+    ha = "left"
+    if nrm[0] < 0:  # keep text upright
+        ang += 180
+        ha = "right"
+    off = 5 * nrm
+    ax.annotate(f"{t_row.astimezone(tz):%H:%M:%S}", (np.radians(az), el), fontsize=6.5,
+                rotation=ang, rotation_mode="anchor", ha=ha, va="center",
+                xytext=(off[0], off[1]), textcoords="offset points")
+for label, k in (("AOS", 0), ("LOS", len(track) - 1)):
+    out = -side * nn[k] * 12  # outer side of the track, away from the time labels
+    ax.annotate(label, (np.radians(track[k, 0]), track[k, 1]), fontsize=8, fontweight="bold",
+                color="#c0392b", ha="center", va="center",
+                xytext=(out[0], out[1]), textcoords="offset points")
+if beamwidth_deg > 0:
+    fig.text(0.5, 0.02, f"Gray: within ±{beamwidth_deg / 2:.0f}° of the satellite ({beamwidth_deg:.0f}° beamwidth)",
+             ha="center", fontsize=7, color="gray")
+sky_png = f".satskyplot_{rise:%Y%m%dT%H%M%S}.png"
+fig.savefig(sky_png, dpi=200)
+plt.close(fig)
+```
+
+```{python}
+#| label: ladder-table
+#| output: asis
+
+n = len(rows)
+font_pt = 10 if n <= 14 else (9 if n <= 18 else 8)
+
+lines = []
+lines.append("```{=typst}")
+lines.append("#grid(columns: (1fr, 8.4cm), gutter: 0.4cm, align: top,")
+lines.append(f"[#set text(size: {font_pt}pt)")
+lines.append("#table(")
+lines.append("  columns: (1.25fr, 1.2fr, 1.2fr, 0.8fr, 0.7fr),")
+lines.append("  stroke: 0.6pt + gray,")
+lines.append("  inset: 3.5pt,")
+lines.append('  fill: (x, y) => if y == 0 { rgb("#e0e0e0") } else { white },')
+lines.append("  align: center + horizon,")
+lines.append("  [*Time*], [*TX MHz*], [*RX MHz*], [*Az*], [*El*],")
+for t, el, az, tx, rx in rows:
+    lines.append(f"  [{t.astimezone(tz):%H:%M:%S}], [{tx:.3f}], [{rx:.3f}], [{az:.0f}°], [{el:.0f}°],")
+lines.append(")],")
+lines.append(f'[#image("{sky_png}", width: 100%)])')
+lines.append("```")
+print("\n".join(lines))
+```
+
+\
+
+```{python}
+#| output: asis
+def esc(t):
+    for ch in "\\#*_$@<`~":
+        t = t.replace(ch, "\\" + ch)
+    return t
+
+def bullets(rows):
+    return "\n".join(f"  - *{esc(l)}:* {esc(t)}" for l, t in rows)
+
+notes = "\n".join(f"  - {esc(x)}" for x in info["notes"])
+print("```{=typst}")
+print("#set text(size: 8pt)")
+print("#grid(columns: (1fr, 1fr), gutter: 0.5cm, align: top,")
+print("[*Yaesu VX-6R + speaker mic: uplink TX*\n" + bullets(scs.tx_radio(info)) + "],")
+print("[*Alinco DJ-VX50: downlink RX*\n" + bullets(scs.rx_radio(info)) + "],")
+print(")")
+print("#v(0.2cm)")
+print("*Notes*\n" + notes)
+print("")
+print("*General*\n" + bullets(scs.GENERAL))
+print("```")
+```

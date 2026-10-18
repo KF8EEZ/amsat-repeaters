@@ -1,0 +1,18 @@
+[project]
+name = "amsat-repeaters"
+version = "0.1.0"
+description = "Pass planning and cue sheets for two-way FM amateur satellite contacts"
+requires-python = ">=3.12"
+dependencies = [
+    "matplotlib>=3.11.2",
+    "numpy>=2.5.2",
+    "pandas>=3.0.6",
+    "skyfield>=1.55",
+]
+
+[dependency-groups]
+dev = [
+    "ipykernel>=7.4.0",
+    "jupyter>=1.1.1",
+    "papermill>=2.7.0",
+]

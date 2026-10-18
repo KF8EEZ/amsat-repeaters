@@ -1,0 +1,21 @@
+project:
+  type: default
+  output-dir: _output
+  render:
+    - reports/index.qmd
+  resources:
+    - data/cue_sheets/**
+
+execute:
+  freeze: false
+  echo: false
+
+jupyter: amsat-repeaters
+
+format:
+  html:
+    theme: cosmo
+    toc: true
+    code-fold: true
+    embed-resources: true
+    css: reports/styles.css
