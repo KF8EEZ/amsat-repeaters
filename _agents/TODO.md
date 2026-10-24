@@ -3,6 +3,9 @@
 - Regenerate cue sheets for the coming days: `uv run sat_cue_sheets.py --days 2 --min-el 10`,
   copy `data/cue_sheets/sat_*.pdf` into `_output/data/cue_sheets/`, re-render
   `reports/index.qmd`, commit.
+- Choose and buy an audio recorder (see `EQUIPMENT.md`); decide how to feed it the downlink and
+  the operator's voice. Once chosen, add it and its cables to `PACKING.md` by name.
+- Walk through `PACKING.md` once with the real kit and correct the (?) items.
 - After each attempted contact, ask the operator for approximate transmit times and what they
   heard; keep a log (`data/contacts.csv` is a good place; not created yet).
 - Compare the operator's times with the SDR bursts (data in sstv-iss `data/sats/`, burst search in

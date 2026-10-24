@@ -14,6 +14,18 @@
   antenna (7.7 dBi at UHF, terrestrial-focused pattern). Keep the TX radio and antenna well away
   from it (front-end overload).
 
+## Audio recorder (planned)
+The operator wants a recorder to capture every contact so nothing has to be written down
+in the moment. Model not chosen yet. The operator currently uses no earpiece: the DJ-VX50
+speaker is audible and the VX-6R speaker mic is used for speaking. So one recorder placed near
+the operator and the Alinco speaker should capture both the downlink and the operator's voice
+(simplest plan; try it first). Caveat: the Alinco speaker also feeds the VX-6R mic when the
+operator is keyed, so keep the speaker volume modest and the Alinco away from the mic. Fallbacks
+if the audio is poor: a Y-splitter from the Alinco earphone jack into the recorder's line-in, or
+a small lav mic on the operator into a two-input recorder. Whatever is chosen must not need a
+free hand. Start/stop is handled per pass (see `PACKING.md`). Contact times then come from the
+recording, so the "roughly to the minute" log in `TODO.md` can be filled from the audio.
+
 ## What the cue sheets contain
 One page per pass (Typst PDF via Quarto): header (times, peak, azimuths), TX/RX frequency,
 30 s ladder (time, TX, RX, az, el), sky plot with the satellite's track, then two columns of radio

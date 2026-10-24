@@ -5,7 +5,8 @@ Read these in order:
 1. `PROJECT.md`: goal, operator, station, standing rules.
 2. `SATELLITES.md`: frequencies, tones, procedures and status of each satellite.
 3. `EQUIPMENT.md`: radios, antennas, and how the cue sheets are built.
-4. `TODO.md`: open work.
+4. `PACKING.md`: checklist for taking the setup out.
+5. `TODO.md`: open work.
 
 Code: `passes.py` (TLE cache, pass finder, Doppler), `sat_cue_sheets.py`
 (satellite table, per-radio settings, PDF generation), `upcoming.py` (CLI pass list),

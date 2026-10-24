@@ -32,7 +32,9 @@ frequencies, azimuth/elevation, radio settings), and lists upcoming passes.
 - Low-elevation passes are preferred for tests: the home SDR's antenna favors the horizon.
   Generate sheets down to 10 deg peak elevation.
 - Uplink radio is the Yaesu VX-6R with an MH-57A4B speaker mic (easier to speak into);
-  downlink radio is the Alinco DJ-VX50 with an earphone (so its speaker does not feed the mic).
+  downlink radio is the Alinco DJ-VX50. No earpiece is used at present (the Alinco speaker is
+  audible, which also lets a recorder capture the downlink). The cue sheet still suggests an
+  earphone; see `sat_cue_sheets.py`.
 
 ## Findings from the SDR (sstv-iss repo, 2026-10-16/18)
 A LimeSDR at the same site watched downlinks 435.85-438.35 MHz on TLE-scheduled windows.
